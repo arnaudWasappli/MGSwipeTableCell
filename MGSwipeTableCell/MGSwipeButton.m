@@ -86,6 +86,16 @@
     return NO;
 }
 
+-(void) iconTintColor:(UIColor *)tintColor
+{
+    UIImage *currentIcon = self.imageView.image;
+    if (currentIcon.renderingMode != UIImageRenderingModeAlwaysTemplate) {
+        currentIcon = [currentIcon imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        [self setImage:currentIcon forState:UIControlStateNormal];
+    }
+    self.tintColor = tintColor;
+}
+
 -(void) centerIconOverText
 {
     [self centerIconOverTextWithSpacing: 3.0];
