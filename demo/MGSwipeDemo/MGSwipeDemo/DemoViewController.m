@@ -13,17 +13,8 @@
 {
     NSMutableArray * tests;
     UIBarButtonItem * prevButton;
-    UITableViewCellAccessoryType accessory;
     UIImageView * background; //used for transparency test
     BOOL allowMultipleSwipe;
-}
-
-
--(void) cancelTableEditClick: (id) sender
-{
-    [_tableView setEditing: NO animated: YES];
-    self.navigationItem.rightBarButtonItem = prevButton;
-    prevButton = nil;
 }
 
 - (void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex
@@ -34,39 +25,27 @@
     
     if (buttonIndex == 1) {
         tests = [TestData data];
-        [_tableView reloadData];
+        [_collectionView reloadData];
     }
     else if (buttonIndex == 2) {
-        _tableView.allowsMultipleSelectionDuringEditing = YES;
-        [_tableView setEditing: YES animated: YES];
-        prevButton = self.navigationItem.rightBarButtonItem;
-        self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"Cancel" style:UIBarButtonItemStyleDone target:self action:@selector(cancelTableEditClick:)];
-    }
-    else if (buttonIndex == 3) {
-        accessory++;
-        if (accessory >=4) {
-            accessory = 0;
-        }
-        [_tableView reloadData];
-    }
-    else if (buttonIndex == 4) {
         if (background) {
             [background removeFromSuperview];
-            _tableView.backgroundColor = [UIColor whiteColor];
+            background = nil;
+            _collectionView.backgroundColor = [UIColor lightGrayColor];
         }
         else {
             background = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"background.jpg"]];
             background.frame = self.view.bounds;
             background.contentMode = UIViewContentModeScaleToFill;
             background.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-            [self.view insertSubview:background belowSubview:_tableView];
-            _tableView.backgroundColor = [UIColor clearColor];
+            [self.view insertSubview:background belowSubview:_collectionView];
+            _collectionView.backgroundColor = [UIColor clearColor];
         }
-        [_tableView reloadData];
+        [_collectionView reloadData];
     }
-    else if (buttonIndex == 5) {
+    else if (buttonIndex == 3) {
         allowMultipleSwipe = !allowMultipleSwipe;
-        [_tableView reloadData];
+        [_collectionView reloadData];
     }
     else {
         UIStoryboard *sb = [UIStoryboard storyboardWithName:@"autolayout_test" bundle:nil];
@@ -81,8 +60,6 @@
     
     UIActionSheet * sheet = [[UIActionSheet alloc] initWithTitle:@"Select action" delegate:self cancelButtonTitle:@"Cancel" destructiveButtonTitle:nil otherButtonTitles: nil];
     [sheet addButtonWithTitle:@"Reload test"];
-    [sheet addButtonWithTitle:@"Multiselect test"];
-    [sheet addButtonWithTitle:@"Change accessory button"];
     [sheet addButtonWithTitle:@"Transparency test"];
     [sheet addButtonWithTitle: allowMultipleSwipe ?  @"Single Swipe" : @"Multiple Swipe"];
     if (!_testingStoryboardCell) {
@@ -99,11 +76,22 @@
     self.title = @"MGSwipeCell";
     
     if (!_testingStoryboardCell) {
-        _tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStylePlain];
-        _tableView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        _tableView.dataSource = self;
-        _tableView.delegate = self;
-        [self.view addSubview:_tableView];
+        UICollectionViewFlowLayout *flowLayout = [[UICollectionViewFlowLayout alloc] init];
+        flowLayout.minimumLineSpacing = 10.0f;
+        flowLayout.minimumInteritemSpacing = 0.0f;
+        flowLayout.sectionInset = UIEdgeInsetsZero;
+        flowLayout.itemSize = CGSizeMake(self.view.bounds.size.width, 155.0f);
+        
+        UICollectionView *collectionView = [[UICollectionView alloc] initWithFrame:self.view.bounds collectionViewLayout:flowLayout];
+        collectionView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        collectionView.backgroundColor = [UIColor whiteColor];
+        collectionView.dataSource = self;
+        collectionView.delegate = self;
+        collectionView.backgroundColor = [UIColor lightGrayColor];
+        [collectionView registerClass:[MGSwipeTableCell class] forCellWithReuseIdentifier:@"programmaticCell"];
+        [self.view addSubview:collectionView];
+        
+        _collectionView = collectionView;
     }
     
     self.navigationItem.rightBarButtonItem =  [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAction target:self action:@selector(actionClick:)];
@@ -146,42 +134,40 @@
     return result;
 }
 
-
-
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section;
-{
+- (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
     return tests.count;
 }
 
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
-{
+static NSString * collectionCellProgrammaticReuseIdentifier = @"programmaticCell";
+
+- (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     MGSwipeTableCell * cell;
     
     if (_testingStoryboardCell) {
         /**
          * Test using storyboard and prototype cell that uses autolayout
          **/
-        cell = [_tableView dequeueReusableCellWithIdentifier:@"prototypeCell"];
+        cell = [_collectionView dequeueReusableCellWithReuseIdentifier:@"prototypeCell" forIndexPath:indexPath];
     }
     else {
         /**
          * Test using programmatically created cells
          **/
-        static NSString * reuseIdentifier = @"programmaticCell";
-        cell = [_tableView dequeueReusableCellWithIdentifier:reuseIdentifier];
+        cell = [_collectionView dequeueReusableCellWithReuseIdentifier:collectionCellProgrammaticReuseIdentifier forIndexPath:indexPath];
         if (!cell) {
-            cell = [[MGSwipeTableCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:reuseIdentifier];
+            cell = [[MGSwipeTableCell alloc] initWithFrame:CGRectZero];
         }
     }
     
     TestData * data = [tests objectAtIndex:indexPath.row];
     
-    cell.textLabel.text = data.title;
-    cell.textLabel.font = [UIFont systemFontOfSize:16];
-    cell.detailTextLabel.text = data.detailTitle;
-    cell.accessoryType = accessory;
+    //cell.textLabel.text = data.title;
+    //cell.textLabel.font = [UIFont systemFontOfSize:16];
+    //cell.detailTextLabel.text = data.detailTitle;
     cell.delegate = self;
     cell.allowsMultipleSwipe = allowMultipleSwipe;
+    
+    cell.backgroundColor = [UIColor whiteColor];
     
     if (background) { //transparency test
         cell.backgroundColor = [UIColor clearColor];
@@ -189,8 +175,8 @@
         cell.selectedBackgroundView.backgroundColor = [[UIColor yellowColor] colorWithAlphaComponent:0.3];
         cell.contentView.backgroundColor = [UIColor clearColor];
         cell.swipeBackgroundColor = [UIColor clearColor];
-        cell.textLabel.textColor = [UIColor yellowColor];
-        cell.detailTextLabel.textColor = [UIColor yellowColor];
+        //cell.textLabel.textColor = [UIColor yellowColor];
+        //cell.detailTextLabel.textColor = [UIColor yellowColor];
     }
 
 #if !TEST_USE_MG_DELEGATE
@@ -211,7 +197,7 @@
 -(NSArray*) swipeTableCell:(MGSwipeTableCell*) cell swipeButtonsForDirection:(MGSwipeDirection)direction
              swipeSettings:(MGSwipeSettings*) swipeSettings expansionSettings:(MGSwipeExpansionSettings*) expansionSettings;
 {
-    TestData * data = [tests objectAtIndex:[_tableView indexPathForCell:cell].row];
+    TestData * data = [tests objectAtIndex:[_collectionView indexPathForCell:cell].row];
     swipeSettings.transition = data.transition;
     
     if (direction == MGSwipeDirectionLeftToRight) {
@@ -227,12 +213,6 @@
 }
 #endif
 
-
-- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    return 60;
-}
-
 -(BOOL) swipeTableCell:(MGSwipeTableCell*) cell tappedButtonAtIndex:(NSInteger) index direction:(MGSwipeDirection)direction fromExpansion:(BOOL) fromExpansion
 {
     NSLog(@"Delegate: button tapped, %@ position, index %d, from Expansion: %@",
@@ -240,18 +220,15 @@
     
     if (direction == MGSwipeDirectionRightToLeft && index == 0) {
         //delete button
-        NSIndexPath * path = [_tableView indexPathForCell:cell];
-        [tests removeObjectAtIndex:path.row];
-        [_tableView deleteRowsAtIndexPaths:@[path] withRowAnimation:UITableViewRowAnimationLeft];
-        return NO; //Don't autohide to improve delete expansion animation
+        NSIndexPath * path = [_collectionView indexPathForCell:cell];
+        if (path) {
+            [tests removeObjectAtIndex:path.row];
+            [_collectionView deleteItemsAtIndexPaths:@[path]];
+            return NO; //Don't autohide to improve delete expansion animation
+        }
     }
     
     return YES;
-}
-
--(void) tableView:(UITableView *)tableView accessoryButtonTappedForRowWithIndexPath:(NSIndexPath *)indexPath
-{
-    NSLog(@"Tapped accessory button");
 }
 
 @end
