@@ -543,8 +543,7 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
 
     MGSwipeTableInputOverlay * _tableInputOverlay;
     bool _overlayEnabled;
-    __weak UITableView * _cachedParentTable;
-    UITableViewCellSelectionStyle _previusSelectionStyle;
+    __weak UICollectionView * _cachedParentTable;
     NSMutableSet * _previusHiddenViews;
     BOOL _triggerStateChanges;
     
@@ -555,9 +554,9 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
 
 #pragma mark View creation & layout
 
-- (id)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+- (instancetype)initWithFrame:(CGRect)frame
 {
-    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
+    self = [super initWithFrame:frame];
     if (self) {
         [self initViews:YES];
     }
@@ -717,15 +716,11 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
     
     if (!_allowsMultipleSwipe) {
         //input overlay on the whole table
-        UITableView * table = [self parentTable];
+        UICollectionView * table = [self parentTable];
         _tableInputOverlay = [[MGSwipeTableInputOverlay alloc] initWithFrame:table.bounds];
         _tableInputOverlay.currentCell = self;
         [table addSubview:_tableInputOverlay];
     }
-
-    _previusSelectionStyle = self.selectionStyle;
-    self.selectionStyle = UITableViewCellSelectionStyleNone;
-    [self setAccesoryViewsHidden:YES];
     
     _tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapHandler:)];
     _tapRecognizer.cancelsTouchesInView = YES;
@@ -751,8 +746,7 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
         _tableInputOverlay = nil;
     }
     
-    self.selectionStyle = _previusSelectionStyle;
-    NSArray * selectedRows = self.parentTable.indexPathsForSelectedRows;
+    NSArray * selectedRows = self.parentTable.indexPathsForSelectedItems;
     if ([selectedRows containsObject:[self.parentTable indexPathForCell:self]]) {
         self.selected = NO; //Hack: in some iOS versions setting the selected property to YES own isn't enough to force the cell to redraw the chosen selectionStyle
         self.selected = YES;
@@ -818,22 +812,6 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
     [self initViews:cleanButtons];
 }
 
--(void) setEditing:(BOOL)editing animated:(BOOL)animated
-{
-    [super setEditing:editing animated:animated];
-    if (editing) { //disable swipe buttons when the user sets table editing mode
-        self.swipeOffset = 0;
-    }
-}
-
--(void) setEditing:(BOOL)editing
-{
-    [super setEditing:YES];
-    if (editing) { //disable swipe buttons when the user sets table editing mode
-        self.swipeOffset = 0;
-    }
-}
-
 -(UIView *) hitTest:(CGPoint)point withEvent:(UIEvent *)event
 {
     if (_swipeOverlay && !_swipeOverlay.hidden) {
@@ -864,9 +842,6 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
 
 -(void) setAccesoryViewsHidden: (BOOL) hidden
 {
-    if (self.accessoryView) {
-        self.accessoryView.hidden = hidden;
-    }
     for (UIView * view in self.contentView.superview.subviews) {
         if (view != self.contentView && ([view isKindOfClass:[UIButton class]] || [NSStringFromClass(view.class) rangeOfString:@"Disclosure"].location != NSNotFound)) {
             view.hidden = hidden;
@@ -903,7 +878,7 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
     return [UIColor clearColor];
 }
 
--(UITableView *) parentTable
+-(UICollectionView *) parentTable
 {
     if (_cachedParentTable) {
         return _cachedParentTable;
@@ -911,8 +886,8 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
     
     UIView * view = self.superview;
     while(view != nil) {
-        if([view isKindOfClass:[UITableView class]]) {
-            _cachedParentTable = (UITableView*) view;
+        if([view isKindOfClass:[UICollectionView class]]) {
+            _cachedParentTable = (UICollectionView*) view;
         }
         view = view.superview;
     }
@@ -1205,10 +1180,6 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
     
     if (gestureRecognizer == _panRecognizer) {
-        
-        if (self.isEditing) {
-            return NO; //do not swipe while editing table
-        }
         
         CGPoint translation = [_panRecognizer translationInView:self];
         if (fabs(translation.y) > fabs(translation.x)) {
