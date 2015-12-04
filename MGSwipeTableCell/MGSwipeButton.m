@@ -75,6 +75,9 @@
     [button setImage:icon forState:UIControlStateNormal];
     button.callback = callback;
     [button setEdgeInsets:insets];
+    button.darkerWhenHighlighted = NO;
+    button.normalColor = color;
+    button.darkerColor = [self darkerColorForColor:color];
     return button;
 }
 
@@ -102,16 +105,16 @@
 }
 
 -(void) centerIconOverTextWithSpacing: (CGFloat) spacing {
-	CGSize size = self.imageView.image.size;
-	self.titleEdgeInsets = UIEdgeInsetsMake(0.0,
-											-size.width,
-											-(size.height + spacing),
-											0.0);
-	size = [self.titleLabel.text sizeWithAttributes:@{ NSFontAttributeName: self.titleLabel.font }];
-	self.imageEdgeInsets = UIEdgeInsetsMake(-(size.height + spacing),
-											0.0,
-											0.0,
-											-size.width);
+    CGSize size = self.imageView.image.size;
+    self.titleEdgeInsets = UIEdgeInsetsMake(0.0,
+                                            -size.width,
+                                            -(size.height + spacing),
+                                            0.0);
+    size = [self.titleLabel.text sizeWithAttributes:@{ NSFontAttributeName: self.titleLabel.font }];
+    self.imageEdgeInsets = UIEdgeInsetsMake(-(size.height + spacing),
+                                            0.0,
+                                            0.0,
+                                            -size.width);
 }
 
 -(void) setPadding:(CGFloat) padding
@@ -139,6 +142,28 @@
 {
     self.contentEdgeInsets = insets;
     [self sizeToFit];
+}
+
+-(void) setHighlighted:(BOOL)highlighted
+{
+    if (self.darkerWhenHighlighted) {
+        if (highlighted) {
+            self.backgroundColor = self.darkerColor;
+        } else {
+            self.backgroundColor = self.normalColor;
+        }
+    }
+}
+
++ (UIColor *)darkerColorForColor:(UIColor *)color
+{
+    CGFloat r, g, b, a;
+    if ([color getRed:&r green:&g blue:&b alpha:&a])
+        return [UIColor colorWithRed:MAX(r - 0.2f, 0.0f)
+                               green:MAX(g - 0.2f, 0.0f)
+                                blue:MAX(b - 0.2f, 0.0f)
+                               alpha:a];
+    return self;
 }
 
 @end
